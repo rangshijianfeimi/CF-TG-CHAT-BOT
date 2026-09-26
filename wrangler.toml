@@ -2,6 +2,9 @@ name = "tg-chat-bot"
 main = "worker.js"
 compatibility_date = "2025-06-18"
 
+# 保存dashboard中的变量
+keep_vars = true
+
 # 用户需要先创建 KV 命名空间，然后把 ID 填到这里
 [[kv_namespaces]]
 binding = "KV"

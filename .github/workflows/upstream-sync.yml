@@ -29,33 +29,48 @@ jobs:
           git remote add upstream https://github.com/qianqi32/SafeRelay.git
           git fetch --no-tags upstream main
 
+      # ============================================================
+      # 保护本地配置文件
+      # 这些文件不会被上游覆盖
+      # ============================================================
       - name: Backup protected files
         run: |
           mkdir -p /tmp/protected/.github/workflows
 
+          # 保护本地 wrangler.toml
           if [ -f wrangler.toml ]; then
             cp wrangler.toml /tmp/protected/wrangler.toml
           fi
 
+          # 保护本地 upstream-sync.yml
           if [ -f .github/workflows/upstream-sync.yml ]; then
             cp .github/workflows/upstream-sync.yml \
               /tmp/protected/.github/workflows/upstream-sync.yml
           fi
 
+          # 保护本地 cloudflare-deploy.yml
           if [ -f .github/workflows/cloudflare-deploy.yml ]; then
             cp .github/workflows/cloudflare-deploy.yml \
               /tmp/protected/.github/workflows/cloudflare-deploy.yml
           fi
 
+      # ============================================================
+      # 删除当前仓库的旧源码
+      #
+      # wrangler.toml 和本地 workflows 不删除
+      # ============================================================
       - name: Remove old repository files
         run: |
           git ls-files -z | while IFS= read -r -d '' file; do
             case "$file" in
               wrangler.toml)
+                echo "Protected: $file"
                 ;;
               .github/workflows/upstream-sync.yml)
+                echo "Protected: $file"
                 ;;
               .github/workflows/cloudflare-deploy.yml)
+                echo "Protected: $file"
                 ;;
               *)
                 git rm -f -- "$file"
@@ -63,6 +78,15 @@ jobs:
             esac
           done
 
+      # ============================================================
+      # 导入上游代码
+      #
+      # 明确排除：
+      #   1. wrangler.toml
+      #   2. .github
+      #
+      # 因此上游这两个位置的内容不会进入本仓库
+      # ============================================================
       - name: Import upstream source
         run: |
           git archive --format=tar upstream/main \
@@ -70,28 +94,49 @@ jobs:
             ':(exclude).github' \
             | tar -xf -
 
+      # ============================================================
+      # 恢复本地受保护文件
+      # ============================================================
       - name: Restore protected files
         run: |
+          # 恢复本地 wrangler.toml
           if [ -f /tmp/protected/wrangler.toml ]; then
             cp /tmp/protected/wrangler.toml wrangler.toml
+            echo "Restored protected: wrangler.toml"
           fi
 
+          # 恢复本地 upstream-sync.yml
           if [ -f /tmp/protected/.github/workflows/upstream-sync.yml ]; then
             mkdir -p .github/workflows
             cp /tmp/protected/.github/workflows/upstream-sync.yml \
               .github/workflows/upstream-sync.yml
+            echo "Restored protected: .github/workflows/upstream-sync.yml"
           fi
 
+          # 恢复本地 cloudflare-deploy.yml
           if [ -f /tmp/protected/.github/workflows/cloudflare-deploy.yml ]; then
             mkdir -p .github/workflows
             cp /tmp/protected/.github/workflows/cloudflare-deploy.yml \
               .github/workflows/cloudflare-deploy.yml
+            echo "Restored protected: .github/workflows/cloudflare-deploy.yml"
           fi
 
+      # ============================================================
+      # 显示最终变更
+      # ============================================================
       - name: Show changed files
         run: |
+          echo "===== Git Status ====="
           git status --short
 
+          echo ""
+          echo "===== Protected files ====="
+          ls -lah wrangler.toml 2>/dev/null || echo "wrangler.toml not found"
+          ls -lah .github/workflows/ 2>/dev/null || true
+
+      # ============================================================
+      # 提交并推送
+      # ============================================================
       - name: Commit and push changes
         run: |
           git add -A

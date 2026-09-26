@@ -7,7 +7,7 @@ keep_vars = true
 
 # 用户需要先创建 KV 命名空间，然后把 ID 填到这里
 [[kv_namespaces]]
-binding = "KV"
+binding = "tgbot_kv"
 id = "aadfa29c2da847649c63e0733ecadc32"
 
 # 🚨 敏感信息不要写在这里！通过 CF Dashboard 或 wrangler secret 设置
